@@ -232,9 +232,8 @@ def send_start_message():
 
 if __name__ == '__main__':
     key_count = 100000
-    pat = os.path.dirname(os.path.abspath(__file__)) + "\\"
-    baseName = pat + 'base.txt'
-    profit = pat + 'out.txt'
+    baseName = 'base.txt'
+    profit = 'out.txt'
     qout = Queue()
     parent_conn, child_conn = Pipe()
     send_start_message()
@@ -247,8 +246,7 @@ if __name__ == '__main__':
 
     print('start generation')
     multiprocessingCount = cpu_count()
-    for u in range(
-            multiprocessingCount):  # launch according to the number of cores, if it does not start, it means there is not enough RAM, you need to reduce the number of threads
+    for u in range(multiprocessingCount):
         proc = Process(target=genHashes, args=(key_count, qout))
         procs.append(proc)
         proc.start()
