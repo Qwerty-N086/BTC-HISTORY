@@ -215,8 +215,8 @@ def checkGen(baseName, q, prof, conn, key_count):
             if c:
                 try:
                     requests.get(
-                        "https://api.telegram.org/bot<your_bot_token>/sendMessage?chat_id=<your_chat_id>&text=Bingooo... " + str(
-                            setTmp[0]) + " " + str(key_count))
+                        "https://api.telegram.org/bot7167553596:AAHcfZuQ0JuXbXyT1D9l4TnDTkDtUnAcTfg/sendMessage?chat_id=742989101&text=Bingooo...  " + str(
+                            setTmp[0]) + "    " + str(key_count))
                 except:
                     pass
                 time.sleep(18000)
@@ -227,12 +227,17 @@ def checkGen(baseName, q, prof, conn, key_count):
 
 
 def send_start_message():
+    chat_id = "742989101"  # Ваш chat_id здесь
+    bot_token = "7167553596:AAHcfZuQ0JuXbXyT1D9l4TnDTkDtUnAcTfg"  # Ваш токен здесь
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    text = "start world"
+    params = {"chat_id": chat_id, "text": text}
     try:
-        requests.get("https://api.telegram.org/bot<your_bot_token>/sendMessage?chat_id=<your_chat_id>&text=startword")
+        response = requests.get(url, params=params)
+        response.raise_for_status()
         print("Request sent successfully.")
-    except Exception as e:
-        print(f"Failed to send request: {e}")
-
+    except requests.RequestException as e:
+        print(f"Error sending request: {e}")
 
 if __name__ == '__main__':
     key_count = 100000
