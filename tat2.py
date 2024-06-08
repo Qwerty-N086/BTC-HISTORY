@@ -1,13 +1,17 @@
+#!/usr/bin/env python3
 import time
 import collections
-import hashlib
 import random
 import codecs
 import os
 import requests
 from multiprocessing import Lock, Process, cpu_count, Queue, Pipe
+from Crypto.Hash import RIPEMD160  # Import RIPEMD160 from pycryptodome
+import hashlib
 
 ALPHA = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+
 def b58decode(ins: str) -> int:
     """Converts a Base-58 encoded integer, as string, back to a number. """
     multi: int = 1
@@ -17,6 +21,7 @@ def b58decode(ins: str) -> int:
         decoded += multi * ALPHA.index(char)
         multi *= alpha_cnt
     return decoded
+
 
 EllipticCurve = collections.namedtuple('EllipticCurve', 'name p a b g n h')
 
@@ -35,6 +40,7 @@ curve = EllipticCurve(
     # Subgroup cofactor.
     h=1,
 )
+
 
 # Modular arithmetic ##########################################################
 def inverse_mod(k, p):
@@ -62,6 +68,7 @@ def inverse_mod(k, p):
     assert (k * x) % p == 1
     return x % p
 
+
 # Functions that work on curve points #########################################
 def is_on_curve(point):
     """Returns True if the given point lies on the elliptic curve."""
@@ -71,21 +78,23 @@ def is_on_curve(point):
     x, y = point
     return (y * y - x * x * x - curve.a * x - curve.b) % curve.p == 0
 
+
 def point_neg(point):
     """Returns -point."""
-    #assert is_on_curve(point)
+    # assert is_on_curve(point)
     if point is None:
         # -0 = 0
         return None
     x, y = point
     result = (x, -y % curve.p)
-    #assert is_on_curve(result)
+    # assert is_on_curve(result)
     return result
+
 
 def point_add(point1, point2):
     """Returns the result of point1 + point2 according to the group law."""
-    #assert is_on_curve(point1)
-    #assert is_on_curve(point2)
+    # assert is_on_curve(point1)
+    # assert is_on_curve(point2)
 
     if point1 is None:
         # 0 + point2 = point2
@@ -113,13 +122,13 @@ def point_add(point1, point2):
     result = (x3 % curve.p,
               -y3 % curve.p)
 
-    #assert is_on_curve(result)
+    # assert is_on_curve(result)
     return result
 
 
 def scalar_mult(k, point):
     """Returns k * point computed using the double and point_add algorithm."""
-    #assert is_on_curve(point)
+    # assert is_on_curve(point)
 
     if k % curve.n == 0 or point is None:
         return None
@@ -141,24 +150,27 @@ def scalar_mult(k, point):
 
         k >>= 1
 
-    #assert is_on_curve(result)
+    # assert is_on_curve(result)
     return result
+
 
 def getHashFromAdress(adr: str):
     # из строки адреса получаем хеш публичного ключа
     decoded = "{:x}".format(b58decode(adr))
     hashPublicKey = decoded[:-8].zfill(40)
-    return(hashPublicKey)
+    return (hashPublicKey)
+
 
 def loadBase(baseName: str):
     '''загрузка хешей публичных ключей из базы адресов'''
     t = set()
-    f = open(baseName)
-    for line in f:
-        if line[0]=='1':
-            hashTmp = bytes.fromhex(getHashFromAdress(line.rstrip('\n')))
-            t.add(hashTmp)
-    return(t)
+    with open(baseName) as f:
+        for line in f:
+            if line[0] == '1':
+                hashTmp = bytes.fromhex(getHashFromAdress(line.rstrip('\n')))
+                t.add(hashTmp)
+    return t
+
 
 def genHashes(kc, q):
     while True:
@@ -169,15 +181,15 @@ def genHashes(kc, q):
             # compressed Pub Key
             prefix = '02' if public_key[1] % 2 == 0 else '03'
             pK = '{}{:x}'.format(prefix, public_key[0])
-            if (len(pK) % 2 > 0):
+            if len(pK) % 2 > 0:
                 pK = '0' + pK
-            ripemd160 = hashlib.new('ripemd160', hashlib.sha256(codecs.decode(pK, 'hex')).digest())
+            ripemd160 = RIPEMD160.new(hashlib.sha256(codecs.decode(pK, 'hex')).digest())  # Use pycryptodome's RIPEMD160
             hashesGen.add(ripemd160.digest())
             # UNcompressed Pub Key
             pK = '04{:x}{:x}'.format(*public_key)
-            if (len(pK) % 2 > 0):
+            if len(pK) % 2 > 0:
                 pK = '0' + pK
-            ripemd160 = hashlib.new('ripemd160', hashlib.sha256(codecs.decode(pK, 'hex')).digest())
+            ripemd160 = RIPEMD160.new(hashlib.sha256(codecs.decode(pK, 'hex')).digest())  # Use pycryptodome's RIPEMD160
             hashesGen.add(ripemd160.digest())
             public_key = point_add(public_key, curve.g)
         q.put([hex(private_key), hashesGen])
@@ -191,7 +203,6 @@ def checkGen(baseName, q, prof, conn, key_count):
     start = time.time()
     base = loadBase(baseName)
     print('time read:', time.time() - start, flush=True)
-    del (start)
     conn.send(False)
 
     while True:
@@ -204,8 +215,8 @@ def checkGen(baseName, q, prof, conn, key_count):
             if c:
                 try:
                     requests.get(
-                        "https://api.telegram.org/bot7167553596:AAHcfZuQ0JuXbXyT1D9l4TnDTkDtUnAcTfg/sendMessage?chat_id=742989101&text=Bingooo...  " + str(
-                            setTmp[0]) + "    " + str(key_count))
+                        "https://api.telegram.org/bot<your_bot_token>/sendMessage?chat_id=<your_chat_id>&text=Bingooo... " + str(
+                            setTmp[0]) + " " + str(key_count))
                 except:
                     pass
                 time.sleep(18000)
@@ -213,27 +224,21 @@ def checkGen(baseName, q, prof, conn, key_count):
 
                 with open(prof, 'a+') as out:
                     out.write('{},{}\n'.format(hex(setTmp[0]), key_count))
-                    out.close()
 
 
 def send_start_message():
-    chat_id = "742989101"  # Ваш chat_id здесь
-    bot_token = "7167553596:AAHcfZuQ0JuXbXyT1D9l4TnDTkDtUnAcTfg"  # Ваш токен здесь
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    text = "start world"
-    params = {"chat_id": chat_id, "text": text}
     try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()
+        requests.get("https://api.telegram.org/bot<your_bot_token>/sendMessage?chat_id=<your_chat_id>&text=startword")
         print("Request sent successfully.")
-    except requests.RequestException as e:
-        print(f"Error sending request: {e}")
+    except Exception as e:
+        print(f"Failed to send request: {e}")
 
 
 if __name__ == '__main__':
     key_count = 100000
-    baseName = 'base.txt'
-    profit = 'out.txt'
+    pat = os.path.dirname(os.path.abspath(__file__)) + "/"
+    baseName = os.path.join(pat, 'base.txt')
+    profit = os.path.join(pat, 'out.txt')
     qout = Queue()
     parent_conn, child_conn = Pipe()
     send_start_message()
@@ -246,7 +251,7 @@ if __name__ == '__main__':
 
     print('start generation')
     multiprocessingCount = cpu_count()
-    for u in range(multiprocessingCount):
+    for _ in range(multiprocessingCount):
         proc = Process(target=genHashes, args=(key_count, qout))
         procs.append(proc)
         proc.start()
